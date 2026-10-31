@@ -1,0 +1,5 @@
+dist/
+*.exe
+main
+main.original
+ultrawide_estado.json
