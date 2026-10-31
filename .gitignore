@@ -1,5 +1,6 @@
 dist/
 *.exe
+!release/UltrawidePatcher.exe
 main
 main.original
 ultrawide_estado.json

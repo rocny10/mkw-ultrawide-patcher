@@ -9,7 +9,8 @@ so the 3D camera shows more on the sides instead of being stretched. It is fully
 
 ## Download
 
-Grab `UltrawidePatcher.exe` from the [Releases](../../releases) page. No install and no Python needed
+**[⬇ Download UltrawidePatcher.exe](https://github.com/rocny10/mkw-ultrawide-patcher/raw/main/release/UltrawidePatcher.exe)**
+(also in the [`release`](release) folder). No install and no Python needed
 (it uses .NET Framework 4.x, which ships with Windows 10/11).
 
 Windows SmartScreen may warn because the exe is not signed: click **More info → Run anyway**.
