@@ -440,15 +440,59 @@ namespace UltrawidePatcher
             BackColor = C.Bg;
             ForeColor = C.Fg;
             Font = new Font("Segoe UI", 9.5f);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.None;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
             ClientSize = new Size(820, 660);
-            MinimumSize = new Size(760, 640);
             StartPosition = FormStartPosition.CenterScreen;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             BuildUi();
+            ApplyDpiScale();
             Engine.Log = s => AppendLog(s);
             RefreshStatus();
+        }
+
+        // The layout is written for 96 DPI. On Windows with display scaling (125%, 150%, 200%...)
+        // the fonts grow automatically, so every position and size is scaled by the same factor.
+        void ApplyDpiScale()
+        {
+            float k = 1f;
+            bool scaleFonts = false;
+            string test = Environment.GetEnvironmentVariable("UWP_TEST_SCALE");
+            float tk;
+            if (!string.IsNullOrEmpty(test) && float.TryParse(test, NumberStyles.Float, CultureInfo.InvariantCulture, out tk))
+            { k = tk; scaleFonts = true; }
+            else
+                using (var g = CreateGraphics()) k = g.DpiX / 96f;
+            if (Math.Abs(k - 1f) < 0.01f) return;
+
+            var all = new List<KeyValuePair<Control, Rectangle>>();
+            Collect(this, all);
+            var fonts = all.Select(kv => kv.Key.Font).ToList();
+            if (scaleFonts) Font = new Font(Font.FontFamily, Font.Size * k, Font.Style);
+            ClientSize = new Size((int)(820 * k), (int)(660 * k));
+            for (int i = 0; i < all.Count; i++)
+            {
+                var kv = all[i];
+                Control c = kv.Key;
+                Rectangle r = kv.Value;
+                if (scaleFonts) c.Font = new Font(fonts[i].FontFamily, fonts[i].Size * k, fonts[i].Style);
+                c.Location = new Point((int)(r.X * k), (int)(r.Y * k));
+                var tb = c as TextBoxBase;
+                if (tb != null && !tb.Multiline) c.Width = (int)(r.Width * k);           // height follows the font
+                else if (!c.AutoSize || tb != null) c.Size = new Size((int)(r.Width * k), (int)(r.Height * k));
+                var cb = c as ComboBox;
+                if (cb != null) cb.ItemHeight = (int)(cb.ItemHeight * k);
+            }
+        }
+
+        static void Collect(Control parent, List<KeyValuePair<Control, Rectangle>> list)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                list.Add(new KeyValuePair<Control, Rectangle>(c, c.Bounds));
+                Collect(c, list);
+            }
         }
 
         Label MkLabel(string text, Control parent, int x, int y, Color color, float size = 9.5f, bool bold = false, int w = 0)
@@ -487,17 +531,14 @@ namespace UltrawidePatcher
             tabPatch.Click += (s, e) => ShowPage(true);
             tabHelp.Click += (s, e) => ShowPage(false);
 
-            pagePatch = new Panel { Left = 16, Top = 106, Width = 788, Height = 538, BackColor = C.Panel,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
-            pageHelp = new Panel { Left = 16, Top = 106, Width = 788, Height = 538, BackColor = C.Panel, Visible = false,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
+            pagePatch = new Panel { Left = 16, Top = 106, Width = 788, Height = 538, BackColor = C.Panel };
+            pageHelp = new Panel { Left = 16, Top = 106, Width = 788, Height = 538, BackColor = C.Panel, Visible = false };
             Controls.Add(pagePatch);
             Controls.Add(pageHelp);
 
             var P = pagePatch;
             MkLabel("exefs folder", P, 16, 14, C.Fg, 11f, true);
             var bFolder = MkButton("Change...", P, 660, 10, 112, false);
-            bFolder.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             bFolder.Click += (s, e) => PickFolder();
             lblFolder = MkLabel("", P, 16, 42, C.Muted, 8.5f, false, 640);
             lblFolder.AutoEllipsis = true;
@@ -558,14 +599,13 @@ namespace UltrawidePatcher
             btnRevert = MkButton("Restore original", P, 176, 360, 170, false);
             btnRevert.Click += (s, e) => DoRevert();
             progress = new ProgressBar { Left = 602, Top = 368, Width = 170, Height = 16, Style = ProgressBarStyle.Marquee,
-                MarqueeAnimationSpeed = 0, Anchor = AnchorStyles.Top | AnchorStyles.Right, Visible = false };
+                MarqueeAnimationSpeed = 0, Visible = false };
             P.Controls.Add(progress);
 
             tbLog = new TextBox {
                 Left = 16, Top = 408, Width = 756, Height = 114, Multiline = true, ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical, BackColor = C.Bg, ForeColor = C.Muted,
-                BorderStyle = BorderStyle.None, Font = new Font("Consolas", 9f),
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+                BorderStyle = BorderStyle.None, Font = new Font("Consolas", 9f)
             };
             P.Controls.Add(tbLog);
 
@@ -573,8 +613,7 @@ namespace UltrawidePatcher
             var help = new TextBox {
                 Left = 16, Top = 14, Width = 756, Height = 510, Multiline = true, ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical, BackColor = C.Panel, ForeColor = C.Fg,
-                BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10f), Text = Instructions(),
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+                BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10f), Text = Instructions()
             };
             pageHelp.Controls.Add(help);
 
